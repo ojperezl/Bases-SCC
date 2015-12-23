@@ -1,0 +1,395 @@
+#---------------------------------------------------------------------------
+#                          Bases de Datos en R.
+#---------------------------------------------------------------------------
+
+library(dplyr)
+setwd("D:/Documentos/3. Batería/3.3. Bases de datos/Dropbox/Bases")
+load("t_pob.RData")
+load("div.RData")
+
+## Capturas
+setwd("D:/Documentos/3. Bateria/3.3. Bases de datos/2. Bases depuradas")
+
+cap <- read.csv2("Capturas.csv", header = T)
+t_cap <- group_by(cap, codmun,anno,dpto,mun,coddpto,region,pob)
+t_cap <- summarise(t_cap, Ncasos = sum(casos))
+t_cap <- arrange(t_cap, anno, codmun)
+t_cap <- mutate(t_cap, Tcasos = (Ncasos*100000)/pob)
+rownames(t_cap) <- paste(t_cap$codmun, t_cap$anno, sep = "_")
+
+setwd("D:/Documentos/3. Batería/3.3. Bases de datos/Dropbox/Bases")
+save(cap, file = "cap.RData")
+save(t_cap, file = "t_cap.RData")
+
+## Consumo SPA
+setwd("D:/Documentos/3. Batería/3.3. Bases de datos/2. Bases depuradas")
+
+spa <- read.csv2("Consumo SPA.csv", header = T)
+spa <- mutate(spa, anno = 2013)
+t_spa <- group_by(spa, p28,p29,p34,p35,p50_1:p50_20,p54b,p54d,p54_1b,p54_1d,p55b,p55d,p56b,p56d,p57b,p57d,p58b,p58d,p59b,p59d)
+
+t_spa <- summarise(t_spa, Ncasos = sum)
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/Dropbox/Bases")
+save(spa, file = "spa.RData")
+save(t_spa, file = "t_spa.RData")
+
+## Contravenciones
+setwd("D:/Documentos/3. Batería/3.3. Bases de datos/2. Bases depuradas")
+
+ctv <- read.csv2("Contravenciones.csv", header = T)
+ctv$dpto <- div$dpto[match(ctv$codmun, div$codmun)]
+ctv$mun <- div$mun[match(ctv$codmun, div$codmun)]
+
+t_ctv <- group_by(ctv, codmun, anno, dpto, mun) # Tasa municipal
+t_ctv <- summarise(t_ctv, Ncasos = sum(casos))
+t_ctv$pob <- t_pob$pob[match(t_ctv$codmun, t_pob$codmun)]
+t_ctv <- mutate(t_ctv, Tcasos = (100000*Ncasos)/pob)
+t_ctvc <- group_by(ctv, codmun, anno, dpto, mun) # Tasa por zona cabecera
+t_ctvc <- summarise(t_ctvc, Ncasos = sum(casos))
+t_ctvc$pobc <- t_pob$pobc[match(t_ctv$codmun, t_pob$codmun)]
+t_ctvc <- mutate(t_ctvc, TCcasos = (100000*Ncasos)/pobc)
+t_ctvr <- group_by(ctv, codmun, anno, dpto, mun) # Tasa por zona rural
+t_ctvr <- summarise(t_ctvr, Ncasos = sum(casos))
+t_ctvr$pobr <- t_pob$pobr[match(t_ctv$codmun, t_pob$codmun)]
+t_ctvr <- mutate(t_ctvr, TRcasos = (100000*Ncasos)/pobr)
+
+setwd("D:/Documentos/3. Batería/3.3. Bases de datos/Dropbox/Bases")
+save(ctv, file = "ctv.RData")
+save(t_ctv, file = "t_ctv.RData")
+
+## Delitos sexuales
+setwd("D:/Documentos/3. Batería/3.3. Bases de datos/2. Bases depuradas")
+
+dsex <- read.csv2("Delitos sexuales.csv", header = T)
+t_dsex <- group_by(dsex, codmun, anno, dpto, mun)
+t_dsex <- summarise(t_dsex, Ncasos = sum(casos))
+t_dsex <- arrange(t_dsex, codmun, anno)
+
+t_dsexc <- filter(dsex, zona == "URBANA")
+t_dsexc <- group_by(t_dsexc, codmun, anno)
+t_dsexc <- summarise(t_dsexc, Ccasos = sum(casos))
+t_dsexr <- filter(dsex, zona == "RURAL")
+t_dsexr <- group_by(t_dsexr, codmun, anno)
+t_dsexr <- summarise(t_dsexr, Rcasos = sum(casos))
+
+t_dsex <- merge(t_dsex, t_dsexc, by = c("codmun", "anno"), all.x = TRUE)
+t_dsex <- merge(t_dsex, t_dsexr, by = c("codmun", "anno"), all.x = TRUE)
+t_dsex <- mutate(t_dsex, id = paste(t_dsex$codmun, t_dsex$anno, sep = "_"))
+t_dsex[is.na(t_dsex)] <- 0
+t_dsex$pob = t_pob$pob[match(t_dsex$id, t_pob$id)]
+t_dsex$pobc = t_pob$pobc[match(t_dsex$id, t_pob$id)]
+t_dsex$pobr = t_pob$pobr[match(t_dsex$id, t_pob$id)]
+t_dsex$id <- NULL
+t_dsex <- mutate(t_dsex, Tcasos = (Ncasos*100000)/pob)
+t_dsex <- mutate(t_dsex, TCcasos = (Ccasos*100000)/pob)
+t_dsex <- mutate(t_dsex, TRcasos = (Rcasos*100000)/pob)
+
+setwd("D:/Documentos/3. Batería/3.3. Bases de datos/Dropbox/Bases")
+save(dsex, file = "dsex.RData")
+save(t_dsex, file = "t_dsex.RData")
+
+## Denuncias
+setwd("D:/Documentos/3. Batería/3.3. Bases de datos/2. Bases depuradas")
+den <- read.csv2("Denuncias.csv", header = T)
+den <- select(den, codmun, anno, delito, art, tentativa, casos)
+setwd("D:/Documentos/3. Batería/3.3. Bases de datos/Dropbox/Bases")
+save(den, file = "den.RData")
+
+## Homicidios
+setwd("D:/Documentos/3. Batería/3.3. Bases de datos/2. Bases depuradas")
+
+hom <- read.csv2("Homicidios.csv", header = T)
+t_hom <- group_by(hom, id,codmun,anno,dpto,mun,coddpto,region,pob,cabc,rest)
+t_hom <- summarise(t_hom, Ncasos = sum(casos))
+t_hom <- arrange(t_hom, anno, codmun)
+t_hom <- mutate(t_hom, Tcasos = (Ncasos*100000)/pob)
+
+t_homc <- filter(hom, zona == "URBANA")
+t_homc <- group_by(t_homc, id,codmun,anno,dpto,mun,coddpto,region,cabc)
+t_homc <- summarise(t_homc, Ccasos = sum(casos))
+t_homc <- arrange(t_homc, anno, codmun)
+t_homc <- mutate(t_homc, TCcasos = (Ccasos*100000)/cabc)
+
+t_homr <- filter(hom, zona == "RURAL")
+t_homr <- group_by(t_homr, id,codmun,anno,dpto,mun,coddpto,region,rest)
+t_homr <- summarise(t_homr, Rcasos = sum(casos))
+t_homr <- arrange(t_homr, anno, codmun)
+t_homr <- mutate(t_homr, TRcasos = (Rcasos*100000)/rest)
+
+t_hom$Ccasos = t_homc$Ccasos[match(t_hom$id, t_homc$id)]
+t_hom$TCcasos = t_homc$TCcasos[match(t_hom$id, t_homc$id)]
+t_hom$Rcasos = t_homr$Rcasos[match(t_hom$id, t_homr$id)]
+t_hom$TRcasos = t_homr$TRcasos[match(t_hom$id, t_homr$id)]
+
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/2. Bases depuradas")
+t_hom2 <- read.csv2("Homicidios ML.csv", header = T)
+
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/Dropbox/Bases")
+save(hom, file = "hom.RData")
+save(t_hom, file = "t_hom.RData")
+save(t_hom2, file = "t_hom2.RData")
+
+## Hurto comercio
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/2. Bases depuradas")
+
+hcio <- read.csv2("Hurto comercio.csv", header = T)
+t_hcio <- group_by(hcio, codmun,anno,dpto,mun,coddpto,region)
+t_hcio <- summarise(t_hcio, Ncasos = sum(casos))
+t_hcio <- mutate(t_hcio, id = paste(t_hcio$codmun, t_hcio$anno, sep = "_"))
+
+t_hcioc <- filter(hcio, zona == "Urbana")
+t_hcioc <- group_by(t_hcioc, codmun, anno)
+t_hcioc <- summarise(t_hcioc, Ccasos = sum(casos))
+t_hcioc <- mutate(t_hcioc, id = paste(t_hcioc$codmun, t_hcioc$anno, sep = "_"))
+
+t_hcior <- filter(hcio, zona == "Rural")
+t_hcior <- group_by(t_hcior, codmun, anno)
+t_hcior <- summarise(t_hcior, Rcasos = sum(casos))
+t_hcior <- mutate(t_hcior, id = paste(t_hcior$codmun, t_hcior$anno, sep = "_"))
+
+t_hcio$Ccasos = t_hcioc$Ccasos[match(t_hcio$id, t_hcioc$id)]
+t_hcio$Rcasos = t_hcior$Rcasos[match(t_hcio$id, t_hcior$id)]
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/Dropbox/Bases")
+load("t_pob.RData")
+t_hcio$pob = t_pob$pob[match(t_hcio$id, t_pob$id)]
+t_hcio$pobc = t_pob$pobc[match(t_hcio$id, t_pob$id)]
+t_hcio$pobr = t_pob$pobr[match(t_hcio$id, t_pob$id)]
+
+t_hcio <- mutate(t_hcio, Tcasos = ((Ncasos*100000)/pob))
+t_hcio <- mutate(t_hcio, TCcasos = ((Ccasos*100000)/pobc))
+t_hcio <- mutate(t_hcio, TRcasos = ((Rcasos*100000)/pobr))
+
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/Dropbox/Bases")
+save(hcio, file = "hcio.RData")
+save(t_hcio, file = "t_hcio.RData")
+
+## Hurto a personas
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/2. Bases depuradas")
+
+hper <- read.csv2("Hurto personas.csv", header = T)
+hper <- mutate(hper, id = paste(hper$codmun, hper$anno, sep = "_"))
+hper$zona <- factor(hper$zona, levels = c("URBANA", "RURAL", "OTRAS"), labels = c("Urbana", "Rural", "Otras"))
+t_hper <- group_by(hper, id, codmun,anno,dpto,mun,coddpto, region)
+t_hper <- summarise(t_hper, Ncasos = sum(casos))
+t_hper <- arrange(t_hper, codmun, anno)
+
+t_hperc <- filter(hper, zona == "Urbana")
+t_hperc <- group_by(t_hperc, id)
+t_hperc <- summarise(t_hperc, Ccasos = sum(casos))
+t_hperr <- filter(hper, zona == "Rural")
+t_hperr <- group_by(t_hperr, id)
+t_hperr <- summarise(t_hperr, Rcasos = sum(casos))
+
+t_hper$Ccasos = t_hperc$Ccasos[match(t_hper$id, t_hperc$id)]
+t_hper$Rcasos = t_hperr$Rcasos[match(t_hper$id, t_hperr$id)]
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/Dropbox/Bases")
+load("t_pob.RData")
+t_hper$pob = t_pob$pob[match(t_hper$id, t_pob$id)]
+t_hper$pobc = t_pob$pobc[match(t_hper$id, t_pob$id)]
+t_hper$pobr = t_pob$pobr[match(t_hper$id, t_pob$id)]
+t_hper <- mutate(t_hper, Tcasos = (Ncasos*100000)/pob, TCcasos = (Ccasos*100000)/pobc, TRcasos = (Rcasos*100000)/pobr)
+
+hper$id <- NULL
+t_hper$id <- NULL
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/Dropbox/Bases")
+save(hper, file = "hper.RData")
+save(t_hper, file = "t_hper.RData")
+
+## Hurto a residencias
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/2. Bases depuradas")
+
+hres <- read.csv2("Hurto residencias.csv", header = T)
+hres <- mutate(hres, id = paste(hres$codmun, hres$anno, sep = "_"))
+hres$zona <- factor(hres$zona, levels = c("URBANA", "RURAL", "OTRAS"), labels = c("Urbana", "Rural", "Otras"))
+t_hres <- group_by(hres, id, codmun,anno,dpto,mun,coddpto, region)
+t_hres <- summarise(t_hres, Ncasos = sum(casos))
+t_hres <- arrange(t_hres, codmun, anno)
+
+t_hresc <- filter(hres, zona == "URBANA")
+t_hresc <- group_by(t_hresc, id)
+t_hresc <- summarise(t_hresc, Ccasos = sum(casos))
+t_hresr <- filter(hres, zona == "RURAL")
+t_hresr <- group_by(t_hresr, id)
+t_hresr <- summarise(t_hresr, Rcasos = sum(casos))
+t_hres$Ccasos = t_hresc$Ccasos[match(t_hres$id, t_hresc$id)]
+t_hres$Rcasos = t_hresr$Rcasos[match(t_hres$id, t_hresr$id)]
+
+t_hres$pob = t_pob$pob[match(t_hres$id, t_pob$id)]
+t_hres$pobc = t_pob$pobc[match(t_hres$id, t_pob$id)]
+t_hres$pobr = t_pob$pobr[match(t_hres$id, t_pob$id)]
+t_hres <- mutate(t_hres, Tcasos = (Ncasos*100000)/pob, TCcasos = (Ccasos*100000)/pob, TRcasos = (Rcasos*100000)/pob)
+
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/Dropbox/Bases")
+save(hres, file = "hres.RData")
+save(t_hres, file = "t_hres.RData")
+
+## Hurto com?n
+load("hcio.RData")
+load("hper.RData")
+load("hres.RData")
+hcio <- mutate(hcio, tipo = "Comercio")
+hper <- mutate(hper, tipo = "Personas")
+hres <- mutate(hres, tipo = "Residencias")
+hcom <- rbind(hcio, hres)
+hcom <- rbind(hcom, hper)
+
+load("t_hcio.RData")
+load("t_hper.RData")
+load("t_hres.RData")
+t_hcio <- mutate(t_hcio, id = paste(t_hcio$codmun, t_hcio$anno, sep = "_"))
+t_hper <- mutate(t_hper, id = paste(t_hper$codmun, t_hper$anno, sep = "_"))
+t_hres <- mutate(t_hres, id = paste(t_hres$codmun, t_hres$anno, sep = "_"))
+
+t_hcom <- t_hcio
+t_hcom <- select(t_hcom, id, codmun, anno, coddpto, dpto, mun, Ncasos)
+colnames(t_hcom) <- c("id", "codmun", "anno", "coddpto", "dpto", "mun", "Ncasos.hcio")
+t_hcom$Ncasos.hper <- t_hper$Ncasos[match(t_hcom$id, t_hper$id)]
+t_hcom$Ncasos.hres <- t_hres$Ncasos[match(t_hcom$id, t_hres$id)]
+t_hcom <- mutate(t_hcom, Ncasos = Ncasos.hcio + Ncasos.hper + Ncasos.hres)
+t_hcom$Ncasos.hcio <- NULL
+t_hcom$Ncasos.hper <- NULL
+t_hcom$Ncasos.hres <- NULL
+t_hcom$pob <- t_pob$pob[match(t_hcom$id, t_pob$id)] 
+t_hcom <- mutate(t_hcom, Tcasos = (Ncasos*100000)/pob)
+t_hcom$id <- NULL
+
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/Dropbox/Bases")
+save(hcom, file = "hcom.RData")
+save(t_hcom, file = "t_hcom.RData")
+
+## Hurto vehiculos
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/2. Bases depuradas")
+
+hveh <- read.csv2("Hurto vehiculos.csv", header = T)
+hveh <- mutate(hveh, id = paste(hveh$codmun, hveh$anno, sep ="_"))
+t_hveh <- group_by(hveh, id, codmun,anno,dpto,mun,coddpto, region)
+t_hveh <- summarise(t_hveh, Ncasos = sum(casos))
+t_hveh <- arrange(t_hveh, codmun, anno)
+
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/Dropbox/Bases")
+save(hveh, file = "hveh.RData")
+save(t_hveh, file = "t_hveh.RData")
+
+## Lesiones accidentes de transito
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/2. Bases depuradas")
+
+lesat <- read.csv2("Lesiones accidentes transito.csv", header = T) 
+lesat$dpto <- div$dpto[match(lesat$codmun, div$codmun)]
+lesat$mun <- div$mun[match(lesat$codmun, div$codmun)]
+t_lesat <- group_by(lesat, codmun, anno, dpto, mun)
+t_lesat <- summarise(t_lesat, Ncasos = sum(casos))
+
+
+t_lesat <- mutate(t_lesat, id = paste(t_lesat$codmun, t_lesat$anno, sep = "_"))
+t_lesat$pob <- t_pob$pob[match(t_lesat$codmun, t_pob$codmun)]
+t_lesat <- mutate(t_lesat, Tcasos = (Ncasos*100000)/pob)
+t_lesat$id <- NULL
+
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/Dropbox/Bases")
+save(lesat, file = "lesat.RData")
+save(t_lesat, file = "t_lesat.RData")
+
+## Lesiones personales
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/2. Bases depuradas")
+
+les <- read.csv2("Lesiones personales.csv", header = T)
+t_les <- group_by(les, codmun,anno,dpto,mun,coddpto,region,pob)
+t_les <- summarise(t_les, Ncasos = sum(casos))
+t_les <- arrange(t_les, anno, codmun)
+t_les <- mutate(t_les, Tcasos = (Ncasos*100000)/pob)
+
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/Dropbox/Bases")
+save(les, file = "les.RData")
+save(t_les, file = "t_les.RData")
+
+## Oferta institucional
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/2. Bases depuradas")
+t_ofi <- read.csv2("Oferta institucional.csv", header = T)
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/Dropbox/Bases")
+save(t_ofi, file = "t_ofi.RData")
+
+## Secuestro y Extorsion
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/2. Bases depuradas")
+
+sec <- read.csv2("Secuestro y Extorsion.csv", header = T)
+sec <- filter(sec, tipo != "EXTORSION")
+sec$dpto <- div$dpto[match(sec$codmun, div$codmun)]
+sec$mun <- div$mun[match(sec$codmun, div$codmun)]
+sec <- select(sec, codmun,anno,dpto,mun,mes,dia,zona,casos,sexo,edad,empleo,estado,modo,tipo,finalidad,fecha,diasem,coddpto,region,autor,agrupacion,nacionalidad)
+t_sec <- group_by(sec, codmun,anno,dpto,mun,coddpto,region)
+t_sec <- summarise(t_sec, Ncasos = sum(casos))
+t_sec <- mutate(t_sec, id = paste(t_sec$codmun, t_sec$anno, sep = "_"))
+t_sec$pob <- t_pob$pob[match(t_sec$id, t_pob$id)]
+t_sec$id <- NULL
+
+ext <- read.csv2("Secuestro y Extorsion.csv", header = T)
+ext <- filter(ext, tipo == "EXTORSION")
+ext$dpto <- div$dpto[match(ext$codmun, div$codmun)]
+ext$mun <- div$mun[match(ext$codmun, div$codmun)]
+ext <- select(ext, codmun,anno,dpto,mun,mes,dia,zona,casos,sexo,edad,empleo,estado,modo,tipo,finalidad,fecha,diasem,coddpto,region,autor,agrupacion,nacionalidad)
+t_ext <- group_by(ext, codmun,anno,dpto,mun,coddpto,region)
+t_ext <- summarise(t_ext, Ncasos = sum(casos))
+t_ext <- mutate(t_ext, id = paste(t_ext$codmun, t_ext$anno, sep = "_"))
+t_ext$pob <- t_pob$pob[match(t_ext$id, t_pob$id)]
+t_ext$id <- NULL
+
+t_secc <- filter(sec, zona == "URBANA")
+t_secc <- mutate(t_secc, id = paste(t_secc$codmun, t_secc$anno, sep = "_"))
+t_secc$pobc <- t_pob$pobc[match(t_secc$id, t_pob$id)]
+t_secc <- group_by(t_secc, codmun, anno, pobc)
+t_secc <- summarise(t_secc, Ccasos = sum(casos))
+t_secr <- filter(sec, zona == "RURAL")
+t_secr <- mutate(t_secr, id = paste(t_secr$codmun, t_secr$anno, sep = "_"))
+t_secr$pobr <- t_pob$pobr[match(t_secr$id, t_pob$id)]
+t_secr <- group_by(t_secr, codmun, anno, pobr)
+t_secr <- summarise(t_secr, Rcasos = sum(casos))
+
+t_extc <- filter(ext, zona == "URBANA")
+t_extc <- mutate(t_extc, id = paste(t_extc$codmun, t_extc$anno, sep = "_"))
+t_extc$pobc <- t_pob$pobc[match(t_extc$id, t_pob$id)]
+t_extc <- group_by(t_extc, codmun, anno, pobc)
+t_extc <- summarise(t_extc, Ccasos = sum(casos))
+t_extr <- filter(ext, zona == "RURAL")
+t_extr <- mutate(t_extr, id = paste(t_extr$codmun, t_extr$anno, sep = "_"))
+t_extr$pobr <- t_pob$pobc[match(t_extr$id, t_pob$id)]
+t_extr <- group_by(t_extr, codmun, anno, pobr)
+t_extr <- summarise(t_extr, Rcasos = sum(casos))
+
+t_sec <- mutate(t_sec, Tcasos = (Ncasos*100000)/pob)
+t_secc <- mutate(t_secc, TCcasos = (Ccasos*100000)/pobc)
+t_secr <- mutate(t_secr, TRcasos = (Rcasos*100000)/pobr)
+t_ext <- mutate(t_ext, Tcasos = (Ncasos*100000)/pob)
+t_extc <- mutate(t_extc, TCcasos = (Ccasos*100000)/pobc)
+t_extr <- mutate(t_extr, TRcasos = (Rcasos*100000)/pobr)
+
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/Dropbox/Bases")
+save(sec, file = "sec.RData")
+save(t_sec, file = "t_sec.RData")
+save(ext, file = "ext.RData")
+save(t_ext, file = "t_ext.RData")
+
+## Terrorismo
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/2. Bases depuradas")
+
+ter <- read.csv2("Terrorismo.csv", header = T)
+t_ter <- group_by(ter, codmun,anno,dpto,mun,coddpto,region)
+t_ter <- summarise(t_ter, Ncasos = sum(casos))
+t_ter <- arrange(t_ter, anno, codmun)
+
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/Dropbox/Bases")
+save(ter, file = "ter.RData")
+save(t_ter, file = "t_ter.RData")
+
+## Violencia intrafamiliar
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/2. Bases depuradas")
+t_vif <- read.csv2("Violencia intrafamiliar.csv", header = T)
+rownames(t_vif) <- paste(t_vif$codmun, t_vif$anno, sep = "_")
+setwd("D:/Documentos/3. Bater?a/3.3. Bases de datos/Dropbox/Bases")
+save(t_vif, file = "t_vif.RData")
+
+write.table(m1, file = "Hurto personas.txt", dec = ",")
+write.table(m2, file = "Hurto residencias.txt", dec = ",")
+write.table(m3, file = "Hurto vehiculos.txt", dec = ",")
+write.table(m4, file = "Hurto comercio.txt", dec = ",")
+
+
